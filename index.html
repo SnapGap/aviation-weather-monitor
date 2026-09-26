@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroBrief — Tactical Aviation Weather Dashboard</title>
+  
+  <!-- Google Fonts & Phosphor Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.0.3"></script>
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <i class="ph-bold ph-airplane-takeoff"></i>
+      </div>
+      <div>
+        <div class="brand-title">AEROBRIEF <span>WX</span></div>
+        <div class="brand-sub">AVIATION METEOROLOGY BRIEFING</div>
+      </div>
+    </div>
+
+    <!-- Quick Search Field -->
+    <div class="search-container">
+      <i class="ph ph-magnifying-glass search-icon"></i>
+      <input type="text" id="airport-search-input" class="search-input" placeholder="Search ICAO, IATA, or Airport Name (e.g. VIDP, LKO, Delhi)..." autocomplete="off">
+      <div id="search-dropdown" class="search-dropdown"></div>
+    </div>
+
+    <!-- Nav Toolbar Controls -->
+    <div class="nav-controls">
+      <!-- Unit Toggles -->
+      <div class="unit-group">
+        <button class="unit-btn active" id="unit-temp-c" title="Celsius">°C</button>
+        <button class="unit-btn" id="unit-temp-f" title="Fahrenheit">°F</button>
+      </div>
+      <div class="unit-group">
+        <button class="unit-btn active" id="unit-spd-kt" title="Knots">KT</button>
+        <button class="unit-btn" id="unit-spd-kmh" title="Kilometers per Hour">KM/H</button>
+      </div>
+      <div class="unit-group">
+        <button class="unit-btn active" id="unit-prs-hpa" title="Hectopascals / Millibars">hPa</button>
+        <button class="unit-btn" id="unit-prs-inhg" title="Inches of Mercury">inHg</button>
+      </div>
+      <div class="unit-group">
+        <button class="unit-btn active" id="unit-time-utc" title="Coordinated Universal Time">UTC</button>
+        <button class="unit-btn" id="unit-time-loc" title="Station Local Time">LOC</button>
+      </div>
+
+      <!-- Action Buttons -->
+      <button class="btn-icon" id="btn-favorite" title="Save to Favorites">
+        <i class="ph ph-star"></i>
+      </button>
+      <button class="btn-icon" id="btn-refresh" title="Force Refresh Data">
+        <i class="ph ph-arrows-clockwise"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-layout">
+
+    <!-- Secondary Navigation / Recent & Favorites Bar -->
+    <div class="quick-bar">
+      <div class="quick-chips-group">
+        <span class="chip-label"><i class="ph-fill ph-star"></i> FAVORITES:</span>
+        <div id="favorites-container" class="chips-list">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+      <div class="quick-chips-group">
+        <span class="chip-label"><i class="ph ph-clock-counter-clockwise"></i> RECENTS:</span>
+        <div id="recents-container" class="chips-list">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert / Toast Banner -->
+    <div id="dashboard-alert" class="dashboard-alert">
+      <i class="ph-bold ph-info" id="alert-icon"></i>
+      <span id="alert-msg">Notification message</span>
+    </div>
+
+    <!-- Airport Tactical Header -->
+    <header class="airport-header">
+      <div class="header-left">
+        <div class="icao-badge-row">
+          <span class="icao-code" id="hdr-icao">VIDP</span>
+          <span class="iata-code" id="hdr-iata">DEL</span>
+          <div class="badge-cat vfr" id="flight-cat-badge">VFR</div>
+        </div>
+        <h1 class="airport-name" id="hdr-name">Indira Gandhi International Airport</h1>
+        <p class="airport-location" id="hdr-location">
+          <i class="ph ph-map-pin"></i> <span id="hdr-city-country">New Delhi, India</span>
+          &bull; Elev: <span id="hdr-elevation">777 FT</span>
+          &bull; Coords: <span id="hdr-coords">28.5665° N, 77.1031° E</span>
+        </p>
+      </div>
+
+      <div class="header-right">
+        <div class="observation-meta">
+          <div class="meta-label">LATEST OBSERVATION</div>
+          <div class="meta-time" id="hdr-obs-time">12:30 UTC</div>
+          <div class="meta-sub" id="hdr-obs-age">Updated 4 mins ago</div>
+        </div>
+        <div class="flight-cat-summary">
+          <div class="cat-title" id="cat-title-text">VISUAL FLIGHT RULES</div>
+          <div class="cat-description" id="cat-desc-text">Ceiling &gt; 3,000 FT AGL and Visibility &gt; 5 SM. Unrestricted visual operations.</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- METAR Operations Card -->
+    <section class="section-card metar-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="ph-bold ph-terminal-window"></i> CURRENT METAR &amp; DECODED OBSERVATION
+        </div>
+        <div class="card-actions">
+          <button class="btn-text" id="btn-copy-metar">
+            <i class="ph ph-copy"></i> Copy Raw
+          </button>
+        </div>
+      </div>
+
+      <!-- Raw METAR Display Strip -->
+      <div class="raw-metar-container">
+        <span class="raw-label">RAW</span>
+        <code class="raw-metar-text" id="raw-metar-display">VIDP 261230Z 27008KT 6000 SCT020 31/24 Q1007 NOSIG</code>
+      </div>
+
+      <!-- Decoded METAR Grid -->
+      <div class="decoded-grid">
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-clock"></i> OBSERVATION TIME</div>
+          <div class="dec-val" id="dec-time">12:30 UTC</div>
+          <div class="dec-sub" id="dec-date">26th of month</div>
+        </div>
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-wind"></i> WIND VECTOR</div>
+          <div class="dec-val" id="dec-wind">270° at 8 KT</div>
+          <div class="dec-sub" id="dec-gusts">No gusts reported</div>
+        </div>
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-eye"></i> VISIBILITY</div>
+          <div class="dec-val" id="dec-vis">6,000 m (3.7 SM)</div>
+          <div class="dec-sub" id="dec-vis-qual">Adequate visual range</div>
+        </div>
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-cloud"></i> CLOUDS &amp; CEILING</div>
+          <div class="dec-val" id="dec-clouds">SCT at 2,000 FT</div>
+          <div class="dec-sub" id="dec-ceiling">Ceiling: None (Scattered)</div>
+        </div>
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-thermometer"></i> TEMP / DEW POINT</div>
+          <div class="dec-val" id="dec-temp">31°C / 24°C</div>
+          <div class="dec-sub" id="dec-rh">Relative Humidity: 67%</div>
+        </div>
+        <div class="decoded-item">
+          <div class="dec-label"><i class="ph ph-gauge"></i> ALTIMETER / QNH</div>
+          <div class="dec-val" id="dec-qnh">1007 hPa</div>
+          <div class="dec-sub" id="dec-inhg">29.74 inHg</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tactical Grid: Overview & Crosswind -->
+    <div class="tactical-split-grid">
+      
+      <!-- Meteorological Key Metrics (6 Tiles) -->
+      <div class="section-card weather-overview-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph-bold ph-gauge"></i> ATMOSPHERIC TELEMETRY
+          </div>
+        </div>
+        <div class="metrics-grid">
+          
+          <div class="metric-tile">
+            <div class="m-icon red"><i class="ph-bold ph-thermometer-simple"></i></div>
+            <div class="m-body">
+              <span class="m-label">TEMPERATURE</span>
+              <span class="m-val" id="tile-temp">31°C</span>
+              <span class="m-sub" id="tile-dew">Dew Point: 24°C</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon blue"><i class="ph-bold ph-drop"></i></div>
+            <div class="m-body">
+              <span class="m-label">HUMIDITY</span>
+              <span class="m-val" id="tile-humidity">67%</span>
+              <span class="m-sub" id="tile-spread">Temp/Dew Spread: 7°C</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon teal"><i class="ph-bold ph-wind"></i></div>
+            <div class="m-body">
+              <span class="m-label">SURFACE WIND</span>
+              <span class="m-val" id="tile-wind">270° / 8 KT</span>
+              <span class="m-sub" id="tile-variable">Stable Direction</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon amber"><i class="ph-bold ph-eye"></i></div>
+            <div class="m-body">
+              <span class="m-label">SURFACE VISIBILITY</span>
+              <span class="m-val" id="tile-visibility">6.0 KM</span>
+              <span class="m-sub" id="tile-vis-sm">3.7 Statute Miles</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon indigo"><i class="ph-bold ph-clouds"></i></div>
+            <div class="m-body">
+              <span class="m-label">LOWEST CLOUD LAYER</span>
+              <span class="m-val" id="tile-cloud-base">2,000 FT</span>
+              <span class="m-sub" id="tile-cloud-coverage">Scattered (3-4 oktas)</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon purple"><i class="ph-bold ph-compass"></i></div>
+            <div class="m-body">
+              <span class="m-label">BAROMETRIC PRESSURE</span>
+              <span class="m-val" id="tile-pressure">1007 hPa</span>
+              <span class="m-sub" id="tile-pressure-inhg">29.74 inHg</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon orange"><i class="ph-bold ph-sun-horizon"></i></div>
+            <div class="m-body">
+              <span class="m-label">DAWN / SUNRISE</span>
+              <span class="m-val" id="tile-sunrise">06:14 UTC</span>
+              <span class="m-sub" id="tile-sunrise-loc">11:44 Local</span>
+            </div>
+          </div>
+
+          <div class="metric-tile">
+            <div class="m-icon dusk"><i class="ph-bold ph-cloud-sun"></i></div>
+            <div class="m-body">
+              <span class="m-label">DUSK / SUNSET</span>
+              <span class="m-val" id="tile-sunset">12:48 UTC</span>
+              <span class="m-sub" id="tile-sunset-loc">18:18 Local</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Tactical Runway & Wind Dial Card -->
+      <div class="section-card runway-wind-card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph-bold ph-navigation-arrow"></i> RUNWAY &amp; CROSSWIND ANALYSIS
+          </div>
+          <div class="runway-selector-wrapper">
+            <label for="runway-select">RWY:</label>
+            <select id="runway-select" class="runway-dropdown">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <div class="wind-interactive-body">
+          <!-- Compass Visualizer -->
+          <div class="compass-viewport">
+            <div class="compass-bezel">
+              <span class="bezel-mark north">N</span>
+              <span class="bezel-mark east">E</span>
+              <span class="bezel-mark south">S</span>
+              <span class="bezel-mark west">W</span>
+
+              <!-- Runway Strip Overlay -->
+              <div class="runway-strip-graphic" id="runway-graphic" style="transform: rotate(100deg);">
+                <div class="runway-reciprocal-tag" id="rwy-tag-recip">28</div>
+                <div class="runway-centerline"></div>
+                <div class="runway-target-tag" id="rwy-tag-target">10</div>
+              </div>
+
+              <!-- Wind Direction Arrow Pointer -->
+              <div class="wind-arrow-pointer" id="wind-arrow-element" style="transform: rotate(270deg);">
+                <div class="wind-barb-head"></div>
+                <div class="wind-barb-shaft"></div>
+                <div class="wind-source-label" id="wind-source-text">8 KT</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Crosswind Calculation Cards -->
+          <div class="crosswind-telemetry">
+            <div class="xwind-stat">
+              <span class="x-title">HEADWIND / TAILWIND</span>
+              <span class="x-val" id="calc-headwind">+7 KT</span>
+              <span class="x-caption" id="calc-headwind-type">Direct Headwind</span>
+            </div>
+            <div class="xwind-stat">
+              <span class="x-title">CROSSWIND COMPONENT</span>
+              <span class="x-val highlight" id="calc-crosswind">3 KT</span>
+              <span class="x-caption" id="calc-crosswind-dir">From Left (270°)</span>
+            </div>
+            <div class="xwind-stat">
+              <span class="x-title">WIND SPEED &amp; GUSTS</span>
+              <span class="x-val" id="calc-speed">8 KT</span>
+              <span class="x-caption" id="calc-gust-val">Gusts: None reported</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAF Terminal Aerodrome Forecast Card -->
+    <section class="section-card taf-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="ph-bold ph-calendar-blank"></i> TERMINAL AERODROME FORECAST (TAF)
+        </div>
+        <div class="card-actions">
+          <button class="btn-text" id="btn-copy-taf">
+            <i class="ph ph-copy"></i> Copy TAF
+          </button>
+        </div>
+      </div>
+
+      <!-- Raw TAF container -->
+      <div class="raw-metar-container taf-style">
+        <span class="raw-label taf-badge">TAF</span>
+        <code class="raw-metar-text" id="raw-taf-display">TAF VIDP 260900Z 2612/2718 28010KT 5000 HZ NSC BECMG 2618/2620 2000 BR SCT020</code>
+      </div>
+
+      <!-- TAF Forecast Stages Breakdown -->
+      <div class="taf-forecast-timeline" id="taf-timeline-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Operational Disclaimer Footer -->
+    <footer class="aviation-disclaimer">
+      <div class="disclaimer-title">
+        <i class="ph-bold ph-warning-circle"></i> OPERATIONAL SAFETY NOTICE &amp; DISCLAIMER
+      </div>
+      <p>
+        AeroBrief WX is an educational and simulation resource built for aviation students, flight simmer enthusiasts, and pilot training. 
+        It does not replace certified official aviation weather briefings, NOTAM evaluations, or dispatcher-approved flight folders required by the DGCA, FAA, EASA, or ICAO. 
+        Do not use this application as the sole source of aeronautical decision-making. Live telemetry provided via NOAA Aviation Weather Center &amp; open aeronautical feeds.
+      </p>
+    </footer>
+
+  </main>
+
+  <!-- External JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
