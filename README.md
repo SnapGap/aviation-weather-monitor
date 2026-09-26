@@ -10,15 +10,15 @@ Built as a personal portfolio project to combine my interests in **aviation, tec
 
 ### Main Dashboard
 
-![Aviation Weather Dashboard](screenshots/dashboard-1.png)
+![Aviation Weather Dashboard](dashboard-1.png)
 
 ### METAR & Weather Information
 
-![METAR Dashboard](screenshots/dashboard-2.png)
+![METAR Dashboard](dashboard-2.png)
 
 ### Mobile View
 
-![Mobile Dashboard](screenshots/mobile.png)
+![Mobile Dashboard](mobile.png)
 
 ---
 
